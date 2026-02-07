@@ -4,7 +4,7 @@ export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login).*)'],
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const sessionCookie = request.cookies.get('session')?.value;
 
   // Redirect to login if no session

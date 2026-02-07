@@ -79,6 +79,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name and number are required' }, { status: 400 });
     }
 
+    const teamId = String(number);
+    const teamDocRef = db.collection('teams').doc(teamId);
+    
+    // Check if team already exists
+    const docSnapshot = await teamDocRef.get();
+    if (docSnapshot.exists) {
+      return NextResponse.json({ error: 'Team already exists' }, { status: 409 });
+    }
+
     const teamData = {
       name,
       number: Number(number),
@@ -88,11 +97,11 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await db.collection('teams').add(teamData);
+    await teamDocRef.set(teamData);
 
     return NextResponse.json({ 
       success: true, 
-      team: { id: docRef.id, ...teamData } 
+      team: { id: teamId, ...teamData } 
     });
   } catch (error) {
     console.error('Create team error:', error);

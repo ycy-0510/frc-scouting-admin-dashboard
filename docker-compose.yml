@@ -3,7 +3,7 @@ version: '3.8'
 services:
   app:
     # Replace with your actual image name after pushing to registry
-    image: ghcr.io/ycy-0510/frc-scouting-manage:latest
+    image: ghcr.io/ycy-0510/frc-scouting-admin-dashboard:latest
     # build: . # Optional: only needed if you want to build locally
     container_name: frc-scouting-manage
     restart: always

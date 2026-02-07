@@ -4,10 +4,12 @@ on:
   push:
     tags:
       - 'release*'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ycy-0510/frc-scouting-manage
+  # Use github.repository as the default image name
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:

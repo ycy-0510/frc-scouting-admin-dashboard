@@ -16,6 +16,7 @@ interface Member {
 interface MemberListProps {
   members: Member[];
   currentUserUid: string;
+  currentUserRole?: string;
   teamId: string;
   onRefresh: () => void;
 }
@@ -23,6 +24,7 @@ interface MemberListProps {
 export default function MemberList({
   members,
   currentUserUid,
+  currentUserRole,
   teamId,
   onRefresh,
 }: MemberListProps) {
@@ -254,6 +256,7 @@ export default function MemberList({
         isOpen={!!editTarget}
         member={editTarget}
         currentUserUid={currentUserUid}
+        currentUserRole={currentUserRole}
         onSave={handleSaveEdit}
         onClose={() => setEditTarget(null)}
       />

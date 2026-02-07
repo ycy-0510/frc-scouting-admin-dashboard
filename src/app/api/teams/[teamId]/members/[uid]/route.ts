@@ -19,7 +19,7 @@ export async function DELETE(
     const { teamId, uid } = await params;
 
     // Check team access
-    if (currentUser.team !== teamId) {
+    if (currentUser.role != 'master' && currentUser.team !== teamId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -67,7 +67,7 @@ export async function PATCH(
     const body = await request.json();
 
     // Check team access
-    if (currentUser.team !== teamId) {
+    if ((currentUser.role != 'master' || body.displayName !== undefined) && currentUser.team !== teamId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -111,7 +111,7 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      
+
       const existingClaims = targetUser.customClaims || {};
       await auth.setCustomUserClaims(uid, {
         ...existingClaims,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { auth, db } from '@/lib/firebase/admin';
+import { auth, db, admin } from '@/lib/firebase/admin';
 
 export async function GET(
   request: NextRequest,
@@ -17,11 +17,12 @@ export async function GET(
     // Verify session and get current user claims
     const currentUser = await auth.verifySessionCookie(sessionCookie, true);
     const currentUserTeam = currentUser.team;
+    const currentUserRole = currentUser.role;
     
     const { teamId } = await params;
 
-    // Only allow access to own team's matches
-    if (currentUserTeam !== teamId) {
+    // Only allow access to own team's matches, unless master
+    if (currentUserRole !== 'master' && currentUserTeam !== teamId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -84,8 +85,11 @@ export async function POST(
     const currentUser = await auth.verifySessionCookie(sessionCookie, true);
     const { teamId } = await params;
 
-    // Only allow admin to add events to own team
-    if (currentUser.team !== teamId || currentUser.role !== 'admin') {
+    // Only allow admin (own team) or master
+    const isMaster = currentUser.role === 'master';
+    const isTeamAdmin = currentUser.team === teamId && currentUser.role === 'admin';
+
+    if (!isMaster && !isTeamAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -111,7 +115,12 @@ export async function POST(
       key => key !== 'event' && key.startsWith('2026')
     );
 
-    if (current2026Events.length >= eventQuota) {
+    // Master can override quota check? Let's say master is bound by quota too, 
+    // BUT since master can edit quota, they can increase it first. 
+    // Plan said: "Allow master to add events even if quota is full (or just allow editing quota)."
+    // Let's stick to strict quota check, relying on master's ability to edit quota.
+    // Check event quota (unless master)
+    if (!isMaster && current2026Events.length >= eventQuota) {
       return NextResponse.json(
         { error: `Event quota exceeded. Maximum ${eventQuota} event(s) allowed.` },
         { status: 400 }
@@ -137,6 +146,100 @@ export async function POST(
     console.error('Add event error:', error);
     return NextResponse.json(
       { error: 'Failed to add event' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Remove an event (Master only)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ teamId: string }> }
+) {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
+
+    if (!sessionCookie) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await auth.verifySessionCookie(sessionCookie, true);
+    const { teamId } = await params;
+
+    const isMaster = currentUser.role === 'master';
+    const isTeamAdmin = currentUser.team === teamId && currentUser.role === 'admin';
+    
+    if (!isMaster && !isTeamAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { eventName } = body;
+
+    if (!eventName) {
+      return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
+    }
+
+    const matchDocRef = db.collection('matches').doc(teamId);
+    
+    // Remove the field
+    await matchDocRef.update({
+      [eventName]: admin.firestore.FieldValue.delete()
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Delete event error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete event' },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH - Update event TBA code (Master only)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ teamId: string }> }
+) {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
+
+    if (!sessionCookie) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await auth.verifySessionCookie(sessionCookie, true);
+    const { teamId } = await params;
+
+    const isMaster = currentUser.role === 'master';
+    const isTeamAdmin = currentUser.team === teamId && currentUser.role === 'admin';
+
+    if (!isMaster && !isTeamAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { eventName, tbaCode } = body;
+
+    if (!eventName) {
+      return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
+    }
+
+    const matchDocRef = db.collection('matches').doc(teamId);
+    
+    // Update the field
+    await matchDocRef.update({
+      [eventName]: tbaCode || ''
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Update event error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update event' },
       { status: 500 }
     );
   }

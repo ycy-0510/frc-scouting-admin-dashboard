@@ -14,6 +14,7 @@ interface EditMemberDialogProps {
   isOpen: boolean;
   member: Member | null;
   currentUserUid: string;
+  currentUserRole?: string;
   onSave: (uid: string, updates: { displayName?: string; role?: string }) => Promise<void>;
   onClose: () => void;
 }
@@ -22,6 +23,7 @@ export default function EditMemberDialog({
   isOpen,
   member,
   currentUserUid,
+  currentUserRole,
   onSave,
   onClose,
 }: EditMemberDialogProps) {
@@ -31,6 +33,7 @@ export default function EditMemberDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const isSelf = member?.uid === currentUserUid;
+  const isMaster = currentUserRole === 'master';
 
   useEffect(() => {
     if (member) {
@@ -101,12 +104,20 @@ export default function EditMemberDialog({
             <div>
               <label className="block text-sm font-medium text-sky-800 mb-1">
                 Display Name
+                {isMaster && (
+                    <span className="text-sky-400 font-normal ml-2">
+                      (Read-only for Master)
+                    </span>
+                  )}
               </label>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-3 py-2 border border-sky-200 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                disabled={isMaster}
+                className={`w-full px-3 py-2 border border-sky-200 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-sky-400 ${
+                  isMaster ? 'bg-sky-50 text-sky-600 cursor-not-allowed' : ''
+                }`}
               />
             </div>
 

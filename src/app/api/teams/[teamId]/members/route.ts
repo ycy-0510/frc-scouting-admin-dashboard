@@ -17,11 +17,12 @@ export async function GET(
     // Verify session and get current user claims
     const currentUser = await auth.verifySessionCookie(sessionCookie, true);
     const currentUserTeam = currentUser.team;
+    const currentUserRole = currentUser.role;
     
     const { teamId } = await params;
 
-    // Only allow access to own team
-    if (currentUserTeam !== teamId) {
+    // Only allow access to own team, unless master
+    if (currentUserRole !== 'master' && currentUserTeam !== teamId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

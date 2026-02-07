@@ -61,11 +61,11 @@ export async function POST(request: NextRequest) {
     // Verify the ID token
     const decodedToken = await auth.verifyIdToken(idToken);
     
-    // Check if user has admin role
+    // Check if user has admin or master role
     const role = decodedToken.role;
-    if (role !== 'admin') {
+    if (role !== 'admin' && role !== 'master') {
       return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
+        { error: 'Unauthorized: Admin or Master access required' },
         { status: 403 }
       );
     }

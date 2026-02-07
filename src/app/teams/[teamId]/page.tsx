@@ -5,8 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
 import Navbar from '@/components/Navbar';
 import MemberList from '@/components/MemberList';
-import EventList from '@/components/MatchList';
 import AddEventDialog from '@/components/AddEventDialog';
+import EditTeamDialog from '@/components/EditTeamDialog';
+import EditEventDialog from '@/components/EditEventDialog';
 
 interface Member {
   uid: string;
@@ -22,6 +23,8 @@ interface Team {
   name: string;
   number: number;
   eventQuota?: number;
+  serial?: string;
+  serialQuantity?: number;
 }
 
 interface Event {
@@ -45,8 +48,11 @@ export default function TeamDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [showEditTeam, setShowEditTeam] = useState(false);
+  const [showEditEvent, setShowEditEvent] = useState<Event | null>(null);
 
   const eventQuota = team?.eventQuota ?? 1;
+  const isMaster = user?.role === 'master';
 
   const fetchData = useCallback(async () => {
     try {
@@ -84,6 +90,23 @@ export default function TeamDetailsPage() {
       fetchData();
     }
   }, [teamId, fetchData]);
+
+  const handleDeleteEvent = async (eventName: string) => {
+    if (!confirm(`Are you sure you want to delete event "${eventName}"? This cannot be undone.`)) return;
+
+    try {
+      const res = await fetch(`/api/matches/${teamId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventName }),
+      });
+
+      if (!res.ok) throw new Error('Failed to delete event');
+      fetchData();
+    } catch {
+      alert('Failed to delete event');
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -137,13 +160,27 @@ export default function TeamDetailsPage() {
 
         {/* Team Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="bg-gradient-to-r from-sky-500 to-sky-600 text-white px-4 py-2 rounded-lg font-bold text-2xl">
-              #{team?.number || teamId}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="bg-gradient-to-r from-sky-500 to-sky-600 text-white px-4 py-2 rounded-lg font-bold text-2xl">
+                #{team?.number || teamId}
+              </div>
+              <h1 className="text-3xl font-bold text-sky-900">
+                {team?.name || `Team ${teamId}`}
+              </h1>
             </div>
-            <h1 className="text-3xl font-bold text-sky-900">
-              {team?.name || `Team ${teamId}`}
-            </h1>
+            
+            {isMaster && (
+              <button
+                onClick={() => setShowEditTeam(true)}
+                className="flex items-center gap-2 bg-white text-sky-600 border border-sky-200 px-4 py-2 rounded-lg font-medium hover:bg-sky-50 transition-colors shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                Edit Team
+              </button>
+            )}
           </div>
         </div>
 
@@ -176,7 +213,7 @@ export default function TeamDetailsPage() {
           {activeTab === 'events' && (
             <button
               onClick={() => setShowAddEvent(true)}
-              disabled={events.length >= eventQuota}
+              disabled={!isMaster && events.length >= eventQuota}
               className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,13 +232,57 @@ export default function TeamDetailsPage() {
           <MemberList
             members={members}
             currentUserUid={user?.uid || ''}
+            currentUserRole={user?.role}
             teamId={teamId}
             onRefresh={fetchData}
           />
         )}
 
         {activeTab === 'events' && (
-          <EventList events={events} />
+          <div className="space-y-4">
+             {events.map((event) => (
+              <div key={event.code} className="bg-white p-4 rounded-xl shadow-sm border border-sky-100 flex justify-between items-center group">
+                 <div>
+                    <h3 className="font-semibold text-lg text-sky-900">{event.name}</h3>
+                    <p className="text-sm text-sky-500 font-mono">{event.code}</p>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   {event.isCurrent && (
+                     <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium">
+                       Active
+                     </span>
+                   )}
+                   {isMaster && (
+                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <button
+                         onClick={() => setShowEditEvent(event)}
+                         className="text-sky-400 hover:text-sky-600 p-2"
+                         title="Edit Event Connection"
+                       >
+                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                         </svg>
+                       </button>
+                       <button
+                         onClick={() => handleDeleteEvent(event.name)}
+                         className="text-red-400 hover:text-red-600 p-2"
+                         title="Delete Event"
+                       >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                       </button>
+                     </div>
+                   )}
+                 </div>
+              </div>
+             ))}
+             {events.length === 0 && (
+               <div className="text-center py-12 text-sky-400">
+                 No events found
+               </div>
+             )}
+          </div>
         )}
       </main>
 
@@ -215,6 +296,27 @@ export default function TeamDetailsPage() {
         onSuccess={fetchData}
         onClose={() => setShowAddEvent(false)}
       />
+
+      {/* Edit Team Dialog */}
+      {team && (
+        <EditTeamDialog
+          isOpen={showEditTeam}
+          onClose={() => setShowEditTeam(false)}
+          onSuccess={fetchData}
+          team={team}
+        />
+      )}
+      {/* Edit Event Dialog */}
+      {showEditEvent && (
+        <EditEventDialog
+          isOpen={!!showEditEvent}
+          teamId={teamId}
+          eventName={showEditEvent.name}
+          currentCode={showEditEvent.code}
+          onSuccess={fetchData}
+          onClose={() => setShowEditEvent(null)}
+        />
+      )}
     </div>
   );
 }

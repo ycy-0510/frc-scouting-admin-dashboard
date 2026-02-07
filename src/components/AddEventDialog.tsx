@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface TBAEvent {
   key: string;
@@ -48,6 +48,24 @@ export default function AddEventDialog({
 
   const remainingQuota = eventQuota - currentEventCount;
 
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/tba/events');
+      if (!response.ok) throw new Error('Failed to fetch events');
+      const data = await response.json();
+      const available = data.events.filter(
+        (e: TBAEvent) => !existingEventCodes.includes(e.code)
+      );
+      setEvents(available);
+      setFilteredEvents(available.slice(0, 10));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [existingEventCodes]);
+
   useEffect(() => {
     if (isOpen) {
       dialogRef.current?.showModal();
@@ -59,7 +77,7 @@ export default function AddEventDialog({
     } else {
       dialogRef.current?.close();
     }
-  }, [isOpen]);
+  }, [isOpen, fetchEvents]);
 
   useEffect(() => {
     if (tbaSearch) {
@@ -88,23 +106,7 @@ export default function AddEventDialog({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/tba/events');
-      if (!response.ok) throw new Error('Failed to fetch events');
-      const data = await response.json();
-      const available = data.events.filter(
-        (e: TBAEvent) => !existingEventCodes.includes(e.code)
-      );
-      setEvents(available);
-      setFilteredEvents(available.slice(0, 10));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const handleSelectTba = (event: TBAEvent) => {
     setSelectedTba(event);

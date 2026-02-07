@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import TeamCard from './TeamCard';
+import { useAuth } from '@/lib/auth/context';
+import CreateTeamDialog from './CreateTeamDialog';
 
 interface Team {
   id: string;
@@ -12,27 +14,30 @@ interface Team {
 }
 
 export default function TeamGallery() {
+  const { user } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const fetchTeams = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/teams');
+      if (!response.ok) {
+        throw new Error('Failed to fetch teams');
+      }
+      const data = await response.json();
+      setTeams(data.teams);
+    } catch (err) {
+      console.error('Error fetching teams:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load teams');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchTeams() {
-      try {
-        const response = await fetch('/api/teams');
-        if (!response.ok) {
-          throw new Error('Failed to fetch teams');
-        }
-        const data = await response.json();
-        setTeams(data.teams);
-      } catch (err) {
-        console.error('Error fetching teams:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load teams');
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchTeams();
   }, []);
 
@@ -63,23 +68,47 @@ export default function TeamGallery() {
     );
   }
 
-  if (teams.length === 0) {
-    return (
-      <div className="bg-sky-50 border border-sky-200 text-sky-700 px-6 py-8 rounded-lg text-center">
-        <svg className="w-12 h-12 mx-auto text-sky-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-        <p className="font-medium">No teams found</p>
-        <p className="text-sm mt-1">You don&apos;t have any teams assigned to your account.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {teams.map((team) => (
-        <TeamCard key={team.id} team={team} />
-      ))}
-    </div>
+    <>
+      <div className="mb-6 flex justify-between items-center">
+        <div className="text-sm text-sky-600">
+          Showing {teams.length} team{teams.length !== 1 ? 's' : ''}
+        </div>
+        
+        {user?.role === 'master' && (
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create Team
+          </button>
+        )}
+      </div>
+
+      {teams.length === 0 ? (
+        <div className="bg-sky-50 border border-sky-200 text-sky-700 px-6 py-8 rounded-lg text-center">
+          <svg className="w-12 h-12 mx-auto text-sky-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <p className="font-medium">No teams found</p>
+          <p className="text-sm mt-1">You don&apos;t have any teams assigned to your account.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {teams.map((team) => (
+            <TeamCard key={team.id} team={team} />
+          ))}
+        </div>
+      )}
+
+      <CreateTeamDialog
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={fetchTeams}
+      />
+    </>
   );
 }

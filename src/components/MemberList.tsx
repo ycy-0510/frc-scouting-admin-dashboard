@@ -10,6 +10,7 @@ interface Member {
   displayName: string;
   role: string;
   disabled: boolean;
+  emailVerified: boolean;
   createdAt?: string;
 }
 
@@ -83,7 +84,35 @@ export default function MemberList({
     }
   };
 
-  const handleSaveEdit = async (uid: string, updates: { displayName?: string; role?: string }) => {
+  const handleVerifyEmail = async (member: Member) => {
+    if (!confirm(`Verify email for ${member.email}?`)) return;
+
+    setLoading(member.uid);
+    try {
+      const response = await fetch(
+        `/api/teams/${teamId}/members/${member.uid}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emailVerified: true }),
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Update failed');
+      }
+      
+      onRefresh();
+    } catch (error) {
+      console.error('Verify email error:', error);
+      alert(error instanceof Error ? error.message : 'Update failed');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleSaveEdit = async (uid: string, updates: { displayName?: string; role?: string; email?: string }) => {
     const response = await fetch(`/api/teams/${teamId}/members/${uid}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -147,6 +176,19 @@ export default function MemberList({
                             You
                           </span>
                         )}
+                          {member.emailVerified ? (
+                            <span className="text-green-500" title="Email Verified">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          ) : (
+                            <span className="text-amber-500" title="Email Not Verified">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sky-700">
@@ -180,6 +222,18 @@ export default function MemberList({
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        {currentUserRole === 'master' && !member.emailVerified && (
+                          <button
+                            onClick={() => handleVerifyEmail(member)}
+                            disabled={isProcessing}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="Verify Email"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </button>
+                        )}
                         <button
                           onClick={() => setEditTarget(member)}
                           disabled={isProcessing}

@@ -80,6 +80,8 @@ export async function PATCH(
     const updates: {
       displayName?: string;
       disabled?: boolean;
+      emailVerified?: boolean;
+      email?: string;
     } = {};
 
     // Update displayName if provided
@@ -98,9 +100,31 @@ export async function PATCH(
       updates.disabled = body.disabled;
     }
 
+    // Update emailVerified status if provided (only master)
+    if (body.emailVerified !== undefined) {
+      if (currentUser.role !== 'master') {
+        return NextResponse.json(
+          { error: 'Only master can verify emails' },
+          { status: 403 }
+        );
+      }
+      updates.emailVerified = body.emailVerified;
+    }
+
     // Apply auth updates
     if (Object.keys(updates).length > 0) {
       await auth.updateUser(uid, updates);
+    }
+
+    // Update email if provided (only master)
+    if (body.email !== undefined) {
+      if (currentUser.role !== 'master') {
+        return NextResponse.json(
+          { error: 'Only master can change emails' },
+          { status: 403 }
+        );
+      }
+      updates.email = body.email;
     }
 
     // Update role claim if provided (cannot change own role)
@@ -130,6 +154,7 @@ export async function PATCH(
         displayName: updatedUser.displayName || '',
         role: updatedUser.customClaims?.role || 'member',
         disabled: updatedUser.disabled,
+        emailVerified: updatedUser.emailVerified,
       },
     });
   } catch (error) {

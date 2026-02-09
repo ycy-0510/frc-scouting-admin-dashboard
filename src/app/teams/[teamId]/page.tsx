@@ -15,6 +15,7 @@ interface Member {
   displayName: string;
   role: string;
   disabled: boolean;
+  emailVerified: boolean;
   createdAt?: string;
 }
 

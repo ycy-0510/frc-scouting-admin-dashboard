@@ -15,7 +15,7 @@ interface EditMemberDialogProps {
   member: Member | null;
   currentUserUid: string;
   currentUserRole?: string;
-  onSave: (uid: string, updates: { displayName?: string; role?: string }) => Promise<void>;
+  onSave: (uid: string, updates: { displayName?: string; role?: string; email?: string }) => Promise<void>;
   onClose: () => void;
 }
 
@@ -29,6 +29,7 @@ export default function EditMemberDialog({
 }: EditMemberDialogProps) {
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState('');
+  const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -39,6 +40,7 @@ export default function EditMemberDialog({
     if (member) {
       setDisplayName(member.displayName);
       setRole(member.role);
+      setEmail(member.email);
     }
   }, [member]);
 
@@ -55,7 +57,7 @@ export default function EditMemberDialog({
     
     setSaving(true);
     try {
-      const updates: { displayName?: string; role?: string } = {};
+      const updates: { displayName?: string; role?: string; email?: string } = {};
       
       if (displayName !== member.displayName) {
         updates.displayName = displayName;
@@ -63,6 +65,10 @@ export default function EditMemberDialog({
       
       if (role !== member.role && !isSelf) {
         updates.role = role;
+      }
+
+      if (email !== member.email && isMaster) {
+        updates.email = email;
       }
       
       if (Object.keys(updates).length > 0) {
@@ -92,12 +98,20 @@ export default function EditMemberDialog({
             <div>
               <label className="block text-sm font-medium text-sky-800 mb-1">
                 Email
+                {isMaster && (
+                  <span className="text-sky-400 font-normal ml-2">
+                    (Role: Master)
+                  </span>
+                )}
               </label>
               <input
-                type="text"
-                value={member.email}
-                disabled
-                className="w-full px-3 py-2 border border-sky-200 rounded-lg bg-sky-50 text-sky-600"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={!isMaster}
+                className={`w-full px-3 py-2 border border-sky-200 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-sky-400 ${
+                  !isMaster ? 'bg-sky-50 text-sky-600 cursor-not-allowed' : ''
+                }`}
               />
             </div>
 

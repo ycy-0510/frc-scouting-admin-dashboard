@@ -36,6 +36,7 @@ export async function GET(
         displayName: user.displayName || '',
         role: user.customClaims?.role || 'member',
         disabled: user.disabled,
+        emailVerified: user.emailVerified,
         createdAt: user.metadata.creationTime,
       }));
 

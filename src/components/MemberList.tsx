@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import EditMemberDialog from './EditMemberDialog';
 
@@ -22,6 +22,14 @@ interface MemberListProps {
   onRefresh: () => void;
 }
 
+type SortKey = 'email' | 'displayName' | 'role' | 'status';
+type SortDirection = 'ascending' | 'descending';
+
+interface SortConfig {
+  key: SortKey;
+  direction: SortDirection;
+}
+
 export default function MemberList({
   members,
   currentUserUid,
@@ -32,6 +40,54 @@ export default function MemberList({
   const [deleteTarget, setDeleteTarget] = useState<Member | null>(null);
   const [editTarget, setEditTarget] = useState<Member | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'email', direction: 'ascending' });
+
+  const sortedMembers = useMemo(() => {
+    const sorted = [...members];
+    sorted.sort((a, b) => {
+      let aValue: string | boolean = '';
+      let bValue: string | boolean = '';
+
+      switch (sortConfig.key) {
+        case 'email':
+          aValue = a.email.toLowerCase();
+          bValue = b.email.toLowerCase();
+          break;
+        case 'displayName':
+          aValue = (a.displayName || '').toLowerCase();
+          bValue = (b.displayName || '').toLowerCase();
+          break;
+        case 'role':
+          aValue = a.role.toLowerCase();
+          bValue = b.role.toLowerCase();
+          break;
+        case 'status':
+          // true (disabled) > false (active)
+          aValue = a.disabled;
+          bValue = b.disabled;
+          break;
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
+      return 0;
+    });
+    return sorted;
+  }, [members, sortConfig]);
+
+  const handleSort = (key: SortKey) => {
+    setSortConfig((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === 'ascending'
+          ? 'descending'
+          : 'ascending',
+    }));
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -134,24 +190,84 @@ export default function MemberList({
     return 'bg-gray-100 text-gray-600 border-gray-200';
   };
 
+  const counts = useMemo(() => {
+    return {
+      admin: members.filter(m => m.role === 'admin').length,
+      member: members.filter(m => m.role === 'member').length,
+      unverified: members.filter(m => !m.emailVerified).length,
+    };
+  }, [members]);
+
   return (
     <>
+      <div className="flex gap-4 mb-4 px-2">
+        <span className="text-sm font-medium text-sky-900 bg-sky-50 px-3 py-1 rounded-full border border-sky-100">
+          Admin: {counts.admin}
+        </span>
+        <span className="text-sm font-medium text-sky-900 bg-sky-50 px-3 py-1 rounded-full border border-sky-100">
+          Member: {counts.member}
+        </span>
+        <span className="text-sm font-medium text-sky-900 bg-sky-50 px-3 py-1 rounded-full border border-sky-100">
+          Email not verified: {counts.unverified}
+        </span>
+      </div>
+
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-sky-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-sky-50 border-b border-sky-100">
-                <th className="text-left px-6 py-4 text-sm font-semibold text-sky-900">
-                  Email
+                <th 
+                  className="text-left px-6 py-4 text-sm font-semibold text-sky-900 cursor-pointer hover:bg-sky-100 transition-colors"
+                  onClick={() => handleSort('email')}
+                >
+                  <div className="flex items-center gap-1">
+                    Email
+                    {sortConfig.key === 'email' && (
+                      <span className="text-sky-500">
+                        {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-sky-900">
-                  Name
+                <th 
+                  className="text-left px-6 py-4 text-sm font-semibold text-sky-900 cursor-pointer hover:bg-sky-100 transition-colors"
+                  onClick={() => handleSort('displayName')}
+                >
+                  <div className="flex items-center gap-1">
+                    Name
+                    {sortConfig.key === 'displayName' && (
+                      <span className="text-sky-500">
+                        {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-sky-900">
-                  Role
+                <th 
+                  className="text-left px-6 py-4 text-sm font-semibold text-sky-900 cursor-pointer hover:bg-sky-100 transition-colors"
+                  onClick={() => handleSort('role')}
+                >
+                  <div className="flex items-center gap-1">
+                    Role
+                    {sortConfig.key === 'role' && (
+                      <span className="text-sky-500">
+                        {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-sky-900">
-                  Status
+                <th 
+                  className="text-left px-6 py-4 text-sm font-semibold text-sky-900 cursor-pointer hover:bg-sky-100 transition-colors"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center gap-1">
+                    Status
+                    {sortConfig.key === 'status' && (
+                      <span className="text-sky-500">
+                        {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th className="text-right px-6 py-4 text-sm font-semibold text-sky-900">
                   Actions
@@ -159,7 +275,7 @@ export default function MemberList({
               </tr>
             </thead>
             <tbody>
-              {members.map((member) => {
+              {sortedMembers.map((member) => {
                 const isSelf = member.uid === currentUserUid;
                 const isProcessing = loading === member.uid;
                 

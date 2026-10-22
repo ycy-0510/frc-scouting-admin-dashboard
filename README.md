@@ -4,6 +4,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 Use Node.js 24.22.1 or a newer Node.js 24 security patch. The Docker build
 uses Node.js 24.22.1, and `.nvmrc` selects the same version for local development.
+The Docker image uses Debian Bookworm slim for the official glibc-based
+Node.js binaries on both AMD64 and ARM64.
 
 ```bash
 nvm install
@@ -31,16 +33,13 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Rebuild the Docker image
 
-After committing and pushing changes to `main`, manually start the existing
-GitHub Actions workflow to rebuild and publish the `latest` image:
+After committing changes to `main`, create a new annotated tag following the
+existing `release-v<version>` naming convention. Push `main` and the new tag
+to `origin` to automatically start the Docker Publish workflow.
 
-```bash
-git push origin main
-gh workflow run docker-publish.yml --ref main
-```
-
-The workflow also runs when a tag matching `release*` is pushed. It builds
-both `linux/amd64` and `linux/arm64` images.
+The workflow builds both `linux/amd64` and `linux/arm64` images and publishes
+the image under the release tag. Manual workflow dispatch is also available
+for rebuilding `main` and publishing the `latest` image.
 
 ## Learn More
 

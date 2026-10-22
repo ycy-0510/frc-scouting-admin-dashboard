@@ -1,16 +1,17 @@
 // Script to explore /matches/{teamNum} subcollections
-import admin from 'firebase-admin';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import { readFileSync } from 'fs';
 
 const serviceAccount = JSON.parse(readFileSync('./firebase-account.json', 'utf-8'));
 
-if (admin.apps.length === 0) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+if (getApps().length === 0) {
+  initializeApp({
+    credential: cert(serviceAccount),
   });
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 
 async function exploreMatchesDetail() {
   const teamNum = '8020';

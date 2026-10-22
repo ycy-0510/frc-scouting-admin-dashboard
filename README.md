@@ -7,6 +7,11 @@ uses Node.js 24.22.1, and `.nvmrc` selects the same version for local developmen
 The Docker image uses Debian Bookworm slim for the official glibc-based
 Node.js binaries on both AMD64 and ARM64.
 
+The Firestore Node.js transport uses a scoped override for the patched
+`@grpc/grpc-js` 1.14.6 release or newer. Firebase's current Firestore package
+still pins the affected 1.9.x line; remove the override once its dependency
+range includes a patched version.
+
 ```bash
 nvm install
 nvm use

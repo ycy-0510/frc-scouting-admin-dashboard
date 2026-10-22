@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { auth, db, admin } from '@/lib/firebase/admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import { auth, db } from '@/lib/firebase/admin';
 
 export async function GET(
   request: NextRequest,
@@ -185,7 +186,7 @@ export async function DELETE(
     
     // Remove the field
     await matchDocRef.update({
-      [eventName]: admin.firestore.FieldValue.delete()
+      [eventName]: FieldValue.delete()
     });
 
     return NextResponse.json({ success: true });
